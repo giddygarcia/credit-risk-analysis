@@ -36,43 +36,43 @@ class GroupMedianImputer(BaseEstimator, TransformerMixin):
 
 def score_predictions(
     proba_train,
-    proba_test,
+    proba_val,
     y_train: pd.Series,
-    y_test: pd.Series,
+    y_val: pd.Series,
     model_name: str,
     params: dict,
     results: pd.DataFrame = None,
     threshold: float = 0.5,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Score classification probabilities on train and test and append to a tracked df.
+    Score classification probabilities on train and validation and append to a tracked df.
 
     Returns:
         results: unformatted dataframe with all scores appended.
-        new_results: rounded copy sorted by test PR-AUC (descending).
+        new_results: rounded copy sorted by validation PR-AUC (descending).
     """
-    cols = ["Model", "Test PR-AUC", "Test ROC-AUC", "Train ROC-AUC",
+    cols = ["Model", "Val PR-AUC", "Val ROC-AUC", "Train ROC-AUC",
             "F1", "Precision", "Recall", "Threshold", "Params"]
     if results is None:
         results = pd.DataFrame(columns=cols)
 
-    pred_test = (proba_test >= threshold).astype(int)
+    pred_val = (proba_val >= threshold).astype(int)
 
     row = {
         "Model": model_name,
-        "Test PR-AUC": average_precision_score(y_test, proba_test),
-        "Test ROC-AUC": roc_auc_score(y_test, proba_test),
+        "Val PR-AUC": average_precision_score(y_val, proba_val),
+        "Val ROC-AUC": roc_auc_score(y_val, proba_val),
         "Train ROC-AUC": roc_auc_score(y_train, proba_train),
-        "F1": f1_score(y_test, pred_test, zero_division=0),
-        "Precision": precision_score(y_test, pred_test, zero_division=0),
-        "Recall": recall_score(y_test, pred_test, zero_division=0),
+        "F1": f1_score(y_val, pred_val, zero_division=0),
+        "Precision": precision_score(y_val, pred_val, zero_division=0),
+        "Recall": recall_score(y_val, pred_val, zero_division=0),
         "Threshold": threshold,
         "Params": str(params),
     }
     results = pd.concat([results, pd.DataFrame([row])], ignore_index=True)
 
-    metric_cols = ["Test PR-AUC", "Test ROC-AUC", "Train ROC-AUC", "F1", "Precision", "Recall"]
-    new_results = results.sort_values(by="Test PR-AUC", ascending=False).reset_index(drop=True)
+    metric_cols = ["Val PR-AUC", "Val ROC-AUC", "Train ROC-AUC", "F1", "Precision", "Recall"]
+    new_results = results.sort_values(by="Val PR-AUC", ascending=False).reset_index(drop=True)
     new_results[metric_cols] = new_results[metric_cols].astype(float).round(3)
 
     return results, new_results
