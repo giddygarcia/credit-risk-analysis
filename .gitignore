@@ -5,6 +5,7 @@ build/
 dist/
 wheels/
 *.egg-info
+catboost_info/
 
 # Virtual environments
 .venv

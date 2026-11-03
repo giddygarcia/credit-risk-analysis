@@ -23,7 +23,6 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, OrdinalEncoder
 
-# silence LightGBM's eval_set deprecation noise and Optuna's per-trial logs
 warnings.filterwarnings("ignore", message=".*eval_set.*")
 warnings.filterwarnings("ignore", category=FutureWarning)
 optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -48,7 +47,7 @@ search_spaces = {
     "XGBoost": lambda trial: {
         "n_estimators": 1000,
         "learning_rate": trial.suggest_float("learning_rate", 0.02, 0.15, log=True),
-        "scale_pos_weight": 1.0,  # overridden in objective() from y_train
+        "scale_pos_weight": 1.0, 
         "max_depth": trial.suggest_int("max_depth", 3, 8),
         "min_child_weight": trial.suggest_int("min_child_weight", 1, 20),
         "subsample": trial.suggest_float("subsample", 0.6, 1.0),
@@ -82,29 +81,6 @@ model_classes = {
     "CatBoost": CatBoostClassifier,
 }
 
-
-class GroupMedianImputer(BaseEstimator, TransformerMixin):
-    """Fill NaNs in `target` with the median of its `group` (learned on train).
-    Falls back to the global median for missing or unseen groups.
-    Adds a `<target>_missing` flag column."""
-
-    def __init__(self, target, group):
-        self.target = target
-        self.group = group
-
-    def fit(self, X, y=None):
-        self.group_medians_ = X.groupby(self.group)[self.target].median().to_dict()
-        self.global_median_ = X[self.target].median()
-        return self
-
-    def transform(self, X):
-        X = X.copy()
-        X[f"{self.target}_missing"] = X[self.target].isna().astype(int)
-        fill = X[self.group].map(self.group_medians_).fillna(self.global_median_)
-        X[self.target] = X[self.target].fillna(fill)
-        return X
-
-
 def score_predictions(
     proba_train,
     proba_val,
@@ -115,11 +91,22 @@ def score_predictions(
     results: pd.DataFrame = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Score classification probabilities on validation and append to a tracked df.
+    Evaluate classification predictions and update the results dataframe.
+
+    Args:
+        proba_train: Training prediction probabilities (currently unused).
+        proba_val: Validation prediction probabilities.
+        y_train (pd.Series): Training target values.
+        y_val (pd.Series): Validation target values.
+        model_name (str): Name of the classification model.
+        params (dict): Model hyperparameters.
+        results (pd.DataFrame, optional): Existing results dataframe.
+
+    Inputs:
+        Validation probabilities and actual target values.
 
     Returns:
-        results: unformatted dataframe with all scores appended.
-        new_results: rounded copy sorted by validation PR-AUC (descending).
+        tuple: Updated results dataframe and sorted, rounded results dataframe.
     """
     cols = ["Model", "ROC-AUC", "Recall", "F1", "Precision", "PR-AUC", "Params"]
     if results is None:
@@ -146,7 +133,22 @@ def score_predictions(
 
 
 def objective(trial, name, X_train, y_train, preprocessor):
-    """Mean ROC-AUC over 3 stratified folds. Preprocessor is cloned and fit per fold."""
+    """
+    Optuna objective function for hyperparameter optimization.
+
+    Args:
+        trial: Optuna trial object.
+        name (str): Model name.
+        X_train (pd.DataFrame): Training features.
+        y_train (pd.Series): Training target.
+        preprocessor: Scikit-learn preprocessing pipeline.
+
+    Inputs:
+        Training data, preprocessing pipeline, and sampled hyperparameters.
+
+    Returns:
+        float: Mean ROC-AUC across three stratified cross-validation folds.
+    """
     params = search_spaces[name](trial)
 
     if name == "XGBoost":
@@ -192,7 +194,21 @@ def objective(trial, name, X_train, y_train, preprocessor):
 
 
 def early_stopping(study, trial, patience=20, min_delta=0.0005):
-    """Stop if the best ROC-AUC hasn't improved by min_delta in the last `patience` trials."""
+    """
+    Stop Optuna optimization when ROC-AUC improvement stalls.
+
+    Args:
+        study: Optuna study object.
+        trial: Completed Optuna trial.
+        patience (int): Number of completed trials to monitor.
+        min_delta (float): Minimum required ROC-AUC improvement.
+
+    Inputs:
+        Current study results and optimization history.
+
+    Returns:
+        None
+    """
     completed = [t for t in study.trials if t.value is not None]
     if len(completed) < patience:
         return
@@ -203,6 +219,24 @@ def early_stopping(study, trial, patience=20, min_delta=0.0005):
 
 
 def tune_models(names, X_train, y_train, preprocessor, n_trials=50):
+    """
+    Tune multiple classification models using Optuna.
+
+    Args:
+        names (list): Model names to optimize.
+        X_train (pd.DataFrame): Training features.
+        y_train (pd.Series): Training target.
+        preprocessor: Scikit-learn preprocessing pipeline.
+        n_trials (int): Maximum number of Optuna trials per model.
+
+    Inputs:
+        Training data, preprocessing pipeline, and model search spaces.
+
+    Returns:
+        tuple:
+            dict: Best hyperparameters for each successfully tuned model.
+            dict: Optuna study objects for each successfully tuned model.
+    """
     best_params_dict, studies = {}, {}
 
     for name in names:

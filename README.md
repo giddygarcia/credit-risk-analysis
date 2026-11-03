@@ -10,7 +10,7 @@ Model interpretability is explored using SHAP, while predicted default probabili
 
 [Credit Risk Dataset](https://www.kaggle.com/datasets/laotse/credit-risk-dataset/data) is taken from Kaggle and has 32k+ rows of data, 12 features.
 
-#### 🎯 Objectives
+### 🎯 Objectives
 - Perform exploratory data analysis (EDA) and data quality checks to understand the data
 - Train a classification model to predict whether a client will default on an existing loan.
   - Evaluate and compare different classification models.
@@ -18,7 +18,7 @@ Model interpretability is explored using SHAP, while predicted default probabili
 - Identify and interpret the variables that contribute most to loan default risk using SHAP.
 - Identify and rank the top-N customers at highest risk of defaulting to help the bank prioritize high-risk accounts and support early intervention strategies.
 
-#### Key Findings
+### 📌 Key Findings
 * 3 boosted models, LightGBM, XGBoost & CatBoost, performed very similarly across all metrics, the final model selection will primarily depend on the business objective.
 * LightGBM was selected for its highest ROC-AUC score, competitive recall, and strong overall balance between precision and recall, while being a lightweight yet well-performing model 
 * The final LightGBM model achieved a ROC-AUC of 0.95 on the held-out test set, demonstrating strong classification performance and good generalization.
@@ -41,6 +41,14 @@ Model interpretability is explored using SHAP, while predicted default probabili
 - Insights into the financial and demographic factors associated with default risk.
 - A ranked list of high-risk customers to support proactive account monitoring and early intervention.
 - A more data-driven approach to credit risk assessment and management.
+
+#### 🛣️ Feature Roadmap / Future Work
+- [ ] **Productionization & Deployment** – Develop a production-ready repository, package the final model, and implement a deployment pipeline for live predictions.
+- [ ] **Threshold Tuning** – Explore different classification thresholds to optimize the precision-recall trade-off.
+- [ ] **Specialized Hyperparameter Tuning** – Further refine model-specific search spaces and optimization strategies to explore potential performance improvements.
+- [ ] **Metric-Specific Optimization** – Experiment with optimizing specifically for recall or other evaluation metrics based on business objectives.
+- [ ] **Credit Risk Grading** – Develop risk categories (e.g., Low, Medium, High) based on predicted default probabilities.
+
 
 ## 🛠️ Technologies & Libraries
 
