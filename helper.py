@@ -140,7 +140,7 @@ def score_predictions(
 
     metric_cols = ["ROC-AUC", "Recall", "F1", "Precision", "PR-AUC"]
     new_results = results.sort_values(by="ROC-AUC", ascending=False).reset_index(drop=True)
-    new_results[metric_cols] = new_results[metric_cols].astype(float).round(3)
+    new_results[metric_cols] = new_results[metric_cols].astype(float).round(4)
 
     return results, new_results
 
@@ -177,8 +177,8 @@ def objective(trial, name, X_train, y_train, preprocessor):
             model.set_params(early_stopping_rounds=25)
             model.fit(X_tr_t, y_tr, eval_set=[(X_v_t, y_v)], verbose=False)
             best_iters.append(model.best_iteration + 1)
-        else:  # CatBoost
-            model.fit(X_tr_t, y_tr, eval_set=(X_v_t, y_v), early_stopping_rounds=25)
+        else: 
+            model.fit(X_tr_t, y_tr, eval_set=(X_v_t, y_v), early_stopping_rounds=25, verbose=False)
             best_iters.append(model.get_best_iteration() + 1)
 
         aucs.append(roc_auc_score(y_v, model.predict_proba(X_v_t)[:, 1]))
